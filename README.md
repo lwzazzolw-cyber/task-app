@@ -29,11 +29,3 @@ Dopo un minuto l'app è su `https://<utente>.github.io/<repo>/`.
 ## Installarla sul telefono
 - iPhone (Safari): Condividi → "Aggiungi a schermata Home"
 - Android (Chrome): menu ⋮ → "Installa app"
-
-## Link magico (aggiungere elementi da Claude)
-Claude può preparare un link `https://lwzazzolw-cyber.github.io/task-app/#add=...` o un codice `GIORNATA:...`.
-- Tocca il link, oppure incolla il codice nella barra "Aggiungi al volo".
-- L'app mostra l'anteprima e chiede conferma. Gli elementi già presenti vengono saltati.
-- Su iPhone, se usi l'app dalla schermata Home, usa il **codice** (Safari e l'app installata hanno memorie separate).
-
-Generatore: `python3 tools/link.py elementi.json` (formato descritto nel file).

@@ -11,6 +11,11 @@ elementi.json è una lista di oggetti con chiavi brevi:
   c  categoria: lavoro personale salute casa studio finanze
   r  ripeti: daily weekdays weekly monthly
   o  note    s  lista di sotto-attività    f  true = tra le 3 priorità
+
+Per modificare elementi esistenti aggiungi "x":
+  {"x":"del","n":"Pranzo con Marco","d":"2026-11-18"}   elimina (d e h opzionali, aiutano a trovarlo)
+  {"x":"done","n":"Pagare la bolletta"}                 segna come fatto
+Il titolo si confronta senza maiuscole/accenti; va bene anche una parte, se è unica.
 """
 import base64, json, sys
 

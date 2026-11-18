@@ -299,7 +299,7 @@ textarea{min-height:70px;resize:vertical}
   </div>
 
   <form class="quick" id="quickForm" autocomplete="off">
-    <input type="text" id="quickIn" placeholder="Aggiungi al volo..." aria-label="Aggiunta rapida" maxlength="200">
+    <input type="text" id="quickIn" placeholder="Aggiungi al volo..." aria-label="Aggiunta rapida" maxlength="20000">
     <button type="submit">Aggiungi</button>
   </form>
   <p class="quickhint">Scrivi una frase, es. <code>Dentista domani 15:30 #salute</code> o <code>Pagare affitto venerdì !alta #finanze</code>. Con un'ora diventa un appuntamento.</p>
@@ -424,6 +424,16 @@ textarea{min-height:70px;resize:vertical}
       <button type="submit" class="btn primary">Salva</button>
     </div>
   </form>
+</div>
+
+<!-- IMPORT SHEET -->
+<div class="sheet-bg" id="impBg">
+  <div class="sheet">
+    <h3 id="impTitle">Da aggiungere</h3>
+    <div class="list" id="impList"></div>
+    <p class="hint" id="impHint"></p>
+    <div class="actions"><button class="btn ghost" id="impCancel">Annulla</button><button class="btn primary" id="impOk">Aggiungi</button></div>
+  </div>
 </div>
 
 <!-- MENU SHEET -->
@@ -564,7 +574,7 @@ function parseQuick(text){
   }
   if(out.time) out.type='appt';
   out.title=s.replace(/\s+/g,' ').trim();
-  out.title=out.title.charAt(0).toUpperCase()+out.title.slice(1);
+  out.title=(out.title.charAt(0).toUpperCase()+out.title.slice(1)).slice(0,200);
   return out;
 }
 
@@ -865,6 +875,7 @@ $('delBtn').onclick=()=>{
 $('quickForm').onsubmit=e=>{
   e.preventDefault();
   const v=$('quickIn').value.trim(); if(!v) return;
+  if(tryImport(v)){$('quickIn').value='';return;}
   const p=parseQuick(v);
   if(!p.title){openForm(null,p);return;}
   const it=Object.assign({id:uid(),created:Date.now(),done:false,doneDates:[],subs:[],notes:'',repeat:'',end:'',place:'',focus:false},p);
@@ -962,7 +973,68 @@ let lastToday=todayISO();
 setInterval(()=>{const t=todayISO(); if(t!==lastToday&&selected===lastToday) selected=t; lastToday=t; if(document.activeElement!==$('dayNote')) render();},60000);
 
 window.addEventListener('resize',()=>{if(view==='stats')renderStats();});
-buildOpts(); load(); if(!state.seeded&&!state.items.length) seed(); applyTheme(); render();
+// ---------- magic link / code import ----------
+// Payload: base64url(JSON array). Short keys: k type a|t, n title, d date, h time, e end, l place,
+// p prio a|m|b, c category, r repeat, o notes, s subtasks[], f focus.
+const PK={a:'alta',m:'media',b:'bassa'};
+function decodePayload(str){
+  const m=String(str).match(/(?:#add=|GIORNATA:)\s*([A-Za-z0-9_\-]+={0,2})/);
+  if(!m) return null;
+  try{
+    const b64=m[1].replace(/-/g,'+').replace(/_/g,'/');
+    const bin=atob(b64+'==='.slice((b64.length+3)%4));
+    const json=new TextDecoder().decode(Uint8Array.from(bin,c=>c.charCodeAt(0)));
+    const arr=JSON.parse(json);
+    if(!Array.isArray(arr)) return null;
+    return arr.filter(x=>x&&x.n&&/^\d{4}-\d{2}-\d{2}$/.test(x.d||'')).map(x=>({
+      type:x.k==='a'?'appt':'task', title:String(x.n).slice(0,200), date:x.d,
+      time:/^\d{2}:\d{2}$/.test(x.h||'')?x.h:'', end:/^\d{2}:\d{2}$/.test(x.e||'')?x.e:'',
+      place:String(x.l||'').slice(0,120), prio:PK[x.p]||(PRIOS.includes(x.p)?x.p:'media'),
+      cat:CATS[x.c]?x.c:'', repeat:REP_LBL[x.r]?x.r:'', notes:String(x.o||'').slice(0,2000),
+      subs:(Array.isArray(x.s)?x.s:[]).map(t=>({id:uid(),t:String(t).slice(0,150),done:false})),
+      focus:!!x.f&&x.k!=='a', importKey:x.d+'|'+(x.h||'')+'|'+x.n
+    }));
+  }catch(e){return null;}
+}
+let pendingImport=null;
+function tryImport(str){
+  const arr=decodePayload(str);
+  if(!arr) return false;
+  const have=new Set(state.items.map(i=>i.importKey).filter(Boolean));
+  const fresh=arr.filter(x=>!have.has(x.importKey));
+  if(!arr.length){toast('Link non valido');return true;}
+  if(!fresh.length){toast('Questi elementi sono già nella tua agenda');return true;}
+  pendingImport=fresh;
+  $('impTitle').textContent='Aggiungere '+fresh.length+(fresh.length===1?' elemento?':' elementi?');
+  const l=$('impList'); l.innerHTML='';
+  fresh.slice().sort((a,b)=>(a.date+(a.time||'99')).localeCompare(b.date+(b.time||'99'))).forEach(x=>{
+    const it=Object.assign({id:'',created:0,done:false,doneDates:[]},x);
+    const el=itemEl(it,x.date); el.querySelectorAll('button').forEach(b=>{b.disabled=true;b.style.cursor='default';});
+    const d=document.createElement('div'); d.className='meta'; d.style.cssText='font-size:12px;color:var(--muted);margin:2px 0 -2px 4px';
+    d.textContent=fmtLong(x.date); l.appendChild(d); l.appendChild(el);
+  });
+  $('impHint').textContent=arr.length>fresh.length?(arr.length-fresh.length)+' erano già presenti e verranno saltati.':'';
+  $('impBg').classList.add('open');
+  return true;
+}
+$('impCancel').onclick=()=>{pendingImport=null;$('impBg').classList.remove('open');};
+$('impOk').onclick=()=>{
+  if(!pendingImport) return;
+  const added=pendingImport.map(x=>Object.assign({id:uid(),created:Date.now(),done:false,doneDates:[]},x));
+  state.items.push(...added); save(); pendingImport=null; $('impBg').classList.remove('open');
+  const first=added.map(x=>x.date).sort()[0]; selected=first>=todayISO()?first:todayISO(); view='day'; render();
+  toast(added.length+' aggiunti ✓',()=>{state.items=state.items.filter(i=>!added.includes(i));save();render();});
+};
+function checkHash(){
+  if(location.hash.startsWith('#add=')){
+    const h=location.hash;
+    try{history.replaceState(null,'',location.pathname+location.search);}catch(e){}
+    tryImport(h);
+  }
+}
+window.addEventListener('hashchange',checkHash);
+
+buildOpts(); load(); if(!state.seeded&&!state.items.length) seed(); applyTheme(); render(); checkHash();
 if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname.endsWith('github.io')){navigator.serviceWorker.register('sw.js').catch(()=>{});}
 })();
 </script>

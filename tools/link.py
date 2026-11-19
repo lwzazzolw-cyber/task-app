@@ -15,6 +15,7 @@ elementi.json è una lista di oggetti con chiavi brevi:
 Per modificare elementi esistenti aggiungi "x":
   {"x":"del","n":"Pranzo con Marco","d":"2026-11-18"}   elimina (d e h opzionali, aiutano a trovarlo)
   {"x":"done","n":"Pagare la bolletta"}                 segna come fatto
+  {"x":"reset","n":"reset"}                             svuota tutta l'agenda (prima degli altri elementi del link)
 Il titolo si confronta senza maiuscole/accenti; va bene anche una parte, se è unica.
 """
 import base64, json, sys

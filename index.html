@@ -335,6 +335,12 @@ textarea{min-height:70px;resize:vertical}
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
 }
 
+.tmw{margin-top:8px;border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:20px;padding:3px 10px 3px 12px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:color .2s,border-color .2s,background .2s,transform .15s var(--spring)}
+.tmw span{transition:transform .2s var(--spring)}
+.tmw:hover{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+.tmw:hover span{transform:translateX(3px)}
+.tmw:active{transform:scale(.94)}
+
 .top h1,.brand,.kpi .v,.sheet h3,.ring .pct{font-family:var(--f-display);letter-spacing:-.01em}
 .item .time,.ring .pct,.chip,.wday li .t,.hbar .n,.kpi .v,.count{font-family:var(--f-num)}
 .kpi .v{font-family:var(--f-display)}
@@ -681,7 +687,8 @@ function itemEl(it,s,opts={}){
   const subs=it.subs.length&&!done?'<ul class="subs">'+it.subs.map((x,i)=>'<li><button type="button" data-i="'+i+'" class="'+(x.done?'on':'')+'"><span class="box"></span><span>'+esc(x.t)+'</span></button></li>').join('')+'</ul>':'';
   el.innerHTML='<div class="prio '+it.prio+'"></div>'+
     '<button class="check" aria-label="'+(done?'Segna da fare':'Segna fatto')+'"><span>'+CHECK+'</span></button>'+
-    '<div class="main"><button class="body"><div class="title">'+esc(it.title)+'</div><div class="meta">'+meta.join('')+'</div></button>'+subs+'</div>'+
+    '<div class="main"><button class="body"><div class="title">'+esc(it.title)+'</div><div class="meta">'+meta.join('')+'</div></button>'+subs+
+    (!done&&!it.repeat&&it.id?'<button class="tmw" type="button" aria-label="Sposta a domani">Domani <span aria-hidden="true">→</span></button>':'')+'</div>'+
     (isAppt?timeHtml:'<button class="star'+(it.focus?' on':'')+(it.id&&it.id===spinId?' spin':'')+'" aria-label="'+(it.focus?'Togli dalle priorità':'Metti tra le priorità')+'">★</button>');
   el.querySelector('.check').onclick=()=>{
     setDone(it,s,!done); save(); if(!done) popId=it.id; render();
@@ -689,6 +696,8 @@ function itemEl(it,s,opts={}){
     if(!done) toast(allDoneToday()?'Hai finito tutto per oggi 🎉':'Fatto ✓',()=>{setDone(it,s,false);save();render();});
   };
   el.querySelector('.body').onclick=()=>openForm(it);
+  const tmw=el.querySelector('.tmw');
+  if(tmw) tmw.onclick=()=>moveToTomorrow(it,s);
   const star=el.querySelector('.star');
   if(star) star.onclick=()=>{
     if(!it.focus&&focusCount(s)>=3){toast('Hai già 3 priorità: togline una prima');return;}
@@ -699,6 +708,17 @@ function itemEl(it,s,opts={}){
     const nb=document.querySelector('.item[data-id="'+it.id+'"] .subs button[data-i="'+b.dataset.i+'"] .box'); if(nb&&x.done&&nb.animate) nb.animate([{transform:'scale(1)'},{transform:'scale(1.5)'},{transform:'scale(1.08)'}],{duration:350,easing:'cubic-bezier(.34,1.56,.64,1)'});
   });
   return el;
+}
+function moveToTomorrow(it,s){
+  const t=todayISO(), from=it.date, wasFocus=!!it.focus;
+  const to=addDays(s<t?t:s,1);
+  animateOut([it.id],()=>{
+    it.date=to;
+    if(it.focus&&itemsOn(to).filter(i=>i!==it&&i.type!=='appt'&&i.focus).length>=3) it.focus=false;
+    save(); render();
+    const lbl=to===addDays(t,1)?'domani':fmtLong(to).toLowerCase();
+    toast('Spostato a '+lbl,()=>{it.date=from;it.focus=wasFocus;save();render();});
+  });
 }
 const focusCount=s=>itemsOn(s).filter(i=>i.type!=='appt'&&i.focus).length;
 const allDoneToday=()=>{const t=todayISO(),d=itemsOn(t);return d.length>0&&d.every(i=>isDone(i,t));};

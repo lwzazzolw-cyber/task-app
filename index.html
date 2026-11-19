@@ -335,7 +335,11 @@ textarea{min-height:70px;resize:vertical}
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
 }
 
-.tmw{margin-top:8px;border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:20px;padding:3px 10px 3px 12px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:color .2s,border-color .2s,background .2s,transform .15s var(--spring)}
+.item{position:relative}
+.item.has-tmw .main{padding-bottom:40px}
+.item.has-tmw.has-subs .main{padding-bottom:12px}
+.item.has-tmw .subs{padding-right:96px}
+.tmw{position:absolute;right:12px;bottom:10px;z-index:1;border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:20px;padding:3px 10px 3px 12px;font-size:12px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:color .2s,border-color .2s,background .2s,transform .15s var(--spring)}
 .tmw span{transition:transform .2s var(--spring)}
 .tmw:hover{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
 .tmw:hover span{transform:translateX(3px)}
@@ -667,6 +671,8 @@ function itemEl(it,s,opts={}){
   const el=document.createElement('div');
   el.className='item'+(done?' done':'')+(it.id&&it.id===popId?' pop':'')+(it.id&&newIds.has(it.id)?' new':'');
   if(it.id) el.dataset.id=it.id;
+  if(!done&&!it.repeat&&it.id) el.classList.add('has-tmw');
+  if(it.subs.length&&!done) el.classList.add('has-subs');
   let timeHtml='';
   if(isAppt){
     timeHtml='<div class="time">'+esc(it.time||'--:--')+(it.end?'<small>'+esc(it.end)+'</small>':'')+'</div>';

@@ -527,7 +527,6 @@ textarea{min-height:70px;resize:vertical}
     <button class="btn ghost" id="exportBtn">Esporta backup (JSON)</button>
     <button class="btn ghost" id="importBtn">Importa backup</button>
     <button class="btn ghost" id="clearDoneBtn">Elimina task completati dei giorni passati</button>
-    <button class="btn ghost" id="seedBtn">Carica dati di esempio</button>
     <button class="btn ghost" id="wipeBtn" style="color:var(--p-alta)">Cancella tutti i dati</button>
     <input type="file" id="importFile" accept="application/json,.json" hidden>
     <p class="hint">I dati sono salvati su questo dispositivo, nel browser. Fai un backup ogni tanto: serve anche per spostarli su un altro telefono o computer.</p>
@@ -1086,7 +1085,7 @@ $('menuClose').onclick=closeMenu;
 $('menuBg').onclick=e=>{if(e.target===$('menuBg')) closeMenu();};
 $('themeBtn').onclick=()=>{state.theme=THEMES[(THEMES.indexOf(state.theme)+1)%3];save();applyTheme();};
 $('wipeBtn').onclick=()=>{$('menuBg').classList.remove('open');tryImport('GIORNATA:'+btoa(JSON.stringify([{x:'reset',n:'reset'}])).replace(/=+$/,''));};
-$('seedBtn').onclick=()=>{seed();closeMenu();toast('Dati di esempio caricati');};
+
 $('exportBtn').onclick=()=>{
   const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='giornata-backup-'+todayISO()+'.json';
@@ -1241,7 +1240,7 @@ function checkHash(){
 }
 window.addEventListener('hashchange',checkHash);
 
-buildOpts(); load(); if(!state.seeded&&!state.items.length) seed(); applyTheme(); render(); checkHash();
+buildOpts(); load(); if(state.items.some(i=>i.example)){state.items=state.items.filter(i=>!i.example);state.seeded=true;save();} applyTheme(); render(); checkHash();
 if('serviceWorker' in navigator && location.protocol==='https:' && location.hostname.endsWith('github.io')){navigator.serviceWorker.register('sw.js').catch(()=>{});}
 })();
 </script>
